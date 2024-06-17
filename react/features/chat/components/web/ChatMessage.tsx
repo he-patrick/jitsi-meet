@@ -11,6 +11,8 @@ import { getCanReplyToMessage, getFormattedTimestamp, getMessageText, getPrivate
 import { IChatMessageProps } from '../../types';
 
 import PrivateMessageButton from './PrivateMessageButton';
+import ReactButton from './ReactButton.tsx';
+import KebabMenu from './KebabMenu.tsx';
 
 interface IProps extends IChatMessageProps {
 
@@ -20,7 +22,11 @@ interface IProps extends IChatMessageProps {
 const useStyles = makeStyles()((theme: Theme) => {
     return {
         chatMessageWrapper: {
-            maxWidth: '100%'
+            maxWidth: '100%',
+            // Intended to make the icons faintly visible when the message is hovered, but does not work.
+            // '&:hover $reactButton, &:hover $kebabButton': {
+            //     opacity: 0.5
+            // },
         },
 
         chatMessage: {
@@ -56,6 +62,14 @@ const useStyles = makeStyles()((theme: Theme) => {
             }
         },
 
+        sideBySideContainer: {
+            display: 'flex',
+            flexDirection: 'row',
+            justifyContent: 'left',
+            alignItems: 'center',
+            marginLeft: theme.spacing(1)
+        },
+
         replyWrapper: {
             display: 'flex',
             flexDirection: 'row' as const,
@@ -69,10 +83,12 @@ const useStyles = makeStyles()((theme: Theme) => {
             flex: 1
         },
 
-        replyButtonContainer: {
+        optionsButtonContainer: {
             display: 'flex',
-            alignItems: 'flex-start',
-            height: '100%'
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: theme.spacing(1)
+
         },
 
         replyButton: {
@@ -116,7 +132,10 @@ const useStyles = makeStyles()((theme: Theme) => {
  * @returns {JSX}
  */
 const ChatMessage = ({
-    canReply,
+    // canReply,
+    canReact,
+    kebabMenuSelfVisible,
+    kebabMenuVisible,
     knocking,
     message,
     showDisplayName,
@@ -172,35 +191,56 @@ const ChatMessage = ({
             className = { cx(classes.chatMessageWrapper, type) }
             id = { message.messageId }
             tabIndex = { -1 }>
-            <div
-                className = { cx('chatmessage', classes.chatMessage, type,
-                    message.privateMessage && 'privatemessage',
-                    message.lobbyChat && !knocking && 'lobbymessage') }>
-                <div className = { classes.replyWrapper }>
-                    <div className = { cx('messagecontent', classes.messageContent) }>
-                        {showDisplayName && _renderDisplayName()}
-                        <div className = { cx('usermessage', classes.userMessage) }>
-                            <span className = 'sr-only'>
-                                {message.displayName === message.recipient
-                                    ? t('chat.messageAccessibleTitleMe')
-                                    : t('chat.messageAccessibleTitle',
-                                        { user: message.displayName })}
-                            </span>
-                            <Message text = { getMessageText(message) } />
-                        </div>
-                        {(message.privateMessage || (message.lobbyChat && !knocking))
-                            && _renderPrivateNotice()}
+            <div className = { classes.sideBySideContainer }>
+                { kebabMenuSelfVisible && 
+                    <div className = { classes.optionsButtonContainer }>
+                        <KebabMenu />
                     </div>
-                    {canReply
-                        && (
-                            <div
-                                className = { classes.replyButtonContainer }>
-                                <PrivateMessageButton
-                                    isLobbyMessage = { message.lobbyChat }
-                                    participantID = { message.id } />
+                }
+                <div
+                    className = { cx('chatmessage', classes.chatMessage, type,
+                        message.privateMessage && 'privatemessage',
+                        message.lobbyChat && !knocking && 'lobbymessage') }>
+                    <div className = { classes.replyWrapper }>
+                        <div className = { cx('messagecontent', classes.messageContent) }>
+                            {showDisplayName && _renderDisplayName()}
+                            <div className = { cx('usermessage', classes.userMessage) }>
+                                <span className = 'sr-only'>
+                                    {message.displayName === message.recipient
+                                        ? t('chat.messageAccessibleTitleMe')
+                                        : t('chat.messageAccessibleTitle',
+                                            { user: message.displayName })}
+                                </span>
+                                <Message text = { getMessageText(message) } />
                             </div>
-                        )}
+                            {(message.privateMessage || (message.lobbyChat && !knocking))
+                                && _renderPrivateNotice()}
+                        </div>
+                    </div>
                 </div>
+                {(canReact || kebabMenuVisible) &&
+                    <div
+                        className= { classes.sideBySideContainer }>
+                        <div>
+                        {canReact
+                            && (
+                                <div
+                                className = { classes.optionsButtonContainer }>
+                                    <ReactButton />
+                                </div>
+                            )}
+                        </div>
+                        <div>
+                        {kebabMenuVisible
+                            && (
+                                <div
+                                    className = { classes.optionsButtonContainer }>
+                                    <KebabMenu />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                }
             </div>
             {showTimestamp && _renderTimestamp()}
         </div>
@@ -215,9 +255,13 @@ const ChatMessage = ({
  */
 function _mapStateToProps(state: IReduxState, { message }: IProps) {
     const { knocking } = state['features/lobby'];
+    const localParticipantId = state['features/base/participants'].local?.id;
 
     return {
         canReply: getCanReplyToMessage(state, message),
+        canReact: message.id !== localParticipantId,
+        kebabMenuSelfVisible: message.id == localParticipantId,
+        kebabMenuVisible: message.id !== localParticipantId,
         knocking
     };
 }
