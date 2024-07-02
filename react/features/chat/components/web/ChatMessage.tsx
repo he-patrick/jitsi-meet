@@ -1,5 +1,5 @@
 import { Theme } from '@mui/material';
-import React from 'react';
+import React, { useCallback } from 'react';
 import { connect } from 'react-redux';
 import { makeStyles } from 'tss-react/mui';
 
@@ -9,6 +9,7 @@ import Message from '../../../base/react/components/web/Message';
 import { withPixelLineHeight } from '../../../base/styles/functions.web';
 import { getCanReplyToMessage, getFormattedTimestamp, getMessageText, getPrivateNoticeMessage } from '../../functions';
 import { IChatMessageProps } from '../../types';
+import { sendReaction } from '../../actions.any.ts';
 
 import PrivateMessageButton from './PrivateMessageButton';
 import ReactButton from './ReactButton.tsx';
@@ -17,6 +18,13 @@ import KebabMenu from './KebabMenu.tsx';
 interface IProps extends IChatMessageProps {
 
     type: string;
+
+    /**
+     * Function to send a reaction to a message.
+     *
+     * @protected
+     */
+    _onSendReaction: Function;
 }
 
 const useStyles = makeStyles()((theme: Theme) => {
@@ -138,6 +146,7 @@ const ChatMessage = ({
     kebabMenuVisible,
     knocking,
     message,
+    _onSendReaction,
     showDisplayName,
     showTimestamp,
     type,
@@ -235,7 +244,9 @@ const ChatMessage = ({
                             && (
                                 <div
                                     className = { classes.optionsButtonContainer }>
-                                    <KebabMenu />
+                                    <KebabMenu
+                                        isLobbyMessage = { message.lobbyChat }
+                                        participantID = { message.id } />
                                 </div>
                             )}
                         </div>
