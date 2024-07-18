@@ -9,7 +9,7 @@ import Avatar from '../../../base/avatar/components/Avatar';
 import { isIosMobileBrowser, isMobileBrowser } from '../../../base/environment/utils';
 import { MEDIA_TYPE } from '../../../base/media/constants';
 import { PARTICIPANT_ROLE } from '../../../base/participants/constants';
-import { getLocalParticipant } from '../../../base/participants/functions';
+import { getLocalParticipant, hasRaisedHand } from '../../../base/participants/functions';
 import { IParticipant } from '../../../base/participants/types';
 import { isParticipantAudioMuted, isParticipantVideoMuted } from '../../../base/tracks/functions.any';
 import ContextMenu from '../../../base/ui/components/web/ContextMenu';
@@ -33,6 +33,7 @@ import CustomOptionButton from './CustomOptionButton';
 import DemoteToVisitorButton from './DemoteToVisitorButton';
 import GrantModeratorButton from './GrantModeratorButton';
 import KickButton from './KickButton';
+import LowerHandButton from './LowerHandButton';
 import MuteButton from './MuteButton';
 import MuteEveryoneElseButton from './MuteEveryoneElseButton';
 import MuteEveryoneElsesVideoButton from './MuteEveryoneElsesVideoButton';
@@ -148,6 +149,7 @@ const ParticipantContextMenu = ({
         : participant?.id ? participantsVolume[participant?.id] : undefined) ?? 1;
     const isBreakoutRoom = useSelector(isInBreakoutRoom);
     const isModerationSupported = useSelector((state: IReduxState) => isAvModerationSupported()(state));
+    const raisedHands = hasRaisedHand(participant);
     const stageFilmstrip = useSelector(isStageFilmstripAvailable);
     const shouldDisplayVerification = useSelector((state: IReduxState) => displayVerification(state, participant?.id));
     const buttonsWithNotifyClick = useSelector(getParticipantMenuButtonsWithNotifyClick);
@@ -214,7 +216,7 @@ const ParticipantContextMenu = ({
 
     if (_isModerator) {
         if (isModerationSupported) {
-            if (_isAudioMuted
+            if (_isAudioMuted && !participant.isSilent
                 && !(isClickedFromParticipantPane && quickActionButtonType === QUICK_ACTION_BUTTON.ASK_TO_UNMUTE)) {
                 buttons.push(<AskToUnmuteButton
                     { ...getButtonProps(BUTTONS.ASK_UNMUTE) }
@@ -230,7 +232,7 @@ const ParticipantContextMenu = ({
             }
         }
 
-        if (!disableRemoteMute) {
+        if (!disableRemoteMute && !participant.isSilent) {
             if (!(isClickedFromParticipantPane && quickActionButtonType === QUICK_ACTION_BUTTON.MUTE)) {
                 buttons.push(<MuteButton { ...getButtonProps(BUTTONS.MUTE) } />);
             }
@@ -239,6 +241,10 @@ const ParticipantContextMenu = ({
                 buttons.push(<MuteVideoButton { ...getButtonProps(BUTTONS.MUTE_VIDEO) } />);
             }
             buttons.push(<MuteEveryoneElsesVideoButton { ...getButtonProps(BUTTONS.MUTE_OTHERS_VIDEO) } />);
+        }
+
+        if (raisedHands) {
+            buttons2.push(<LowerHandButton { ...getButtonProps(BUTTONS.LOWER_PARTICIPANT_HAND) } />);
         }
 
         if (!disableGrantModerator && !isBreakoutRoom) {

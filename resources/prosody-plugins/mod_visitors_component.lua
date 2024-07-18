@@ -1,5 +1,6 @@
 module:log('info', 'Starting visitors_component at %s', module.host);
 
+local http = require 'net.http';
 local jid = require 'util.jid';
 local st = require 'util.stanza';
 local util = module:require 'util';
@@ -18,6 +19,9 @@ local um_is_admin = require 'core.usermanager'.is_admin;
 local json = require 'cjson.safe';
 local inspect = require 'inspect';
 
+-- will be initialized once the main virtual host module is initialized
+local token_util;
+
 local MUC_NS = 'http://jabber.org/protocol/muc';
 
 local muc_domain_prefix = module:get_option_string('muc_mapper_domain_prefix', 'conference');
@@ -35,6 +39,13 @@ local auto_allow_promotion = module:get_option_boolean('auto_allow_visitor_promo
 -- whether to always advertise that visitors feature is enabled for rooms
 -- can be set to off and being controlled by another module, turning it on and off for rooms
 local always_visitors_enabled = module:get_option_boolean('always_visitors_enabled', true);
+
+local visitors_queue_service = module:get_option_string('visitors_queue_service');
+local http_headers = {
+    ["User-Agent"] = "Prosody (" .. prosody.version .. "; " .. prosody.platform .. ")",
+    ["Content-Type"] = "application/json",
+    ["Accept"] = "application/json"
+};
 
 local function is_admin(jid)
     return um_is_admin(jid, module.host);
@@ -78,7 +89,6 @@ local function request_promotion_received(room, from_jid, from_vnode, nick, time
         -- only for raise hand, ignore lowering the hand
         if time and time > 0 and (
             auto_allow_promotion
-            or (user_id and user_id == room._data.moderator_id)
             or force_promote == 'true') then
             --  we are in auto-allow mode, let's reply with accept
             -- we store where the request is coming from so we can send back the response
@@ -231,17 +241,6 @@ local function stanza_handler(event)
             return true; -- stop processing
         end
 
-        local force_promote = request_promotion.attr.forcePromote;
-        if force_promote == 'true' and not is_vpaas(room) then
-            -- allow force promote only in case there are no moderators in the room
-            for _, occupant in room:each_occupant() do
-                if occupant.role == 'moderator' and not is_admin(occupant.bare_jid) then
-                    force_promote = false;
-                    break;
-                end
-            end
-        end
-
         local display_name = visitors_iq:get_child_text('nick', 'http://jabber.org/protocol/nick');
         processed = request_promotion_received(
             room,
@@ -250,7 +249,7 @@ local function stanza_handler(event)
             display_name,
             tonumber(request_promotion.attr.time),
             request_promotion.attr.userId,
-            force_promote
+            request_promotion.attr.forcePromote
         );
     end
 
@@ -306,7 +305,60 @@ local function process_promotion_response(room, id, approved)
             allow = approved }):up());
 end
 
+-- if room metadata does not have visitors.live set to `true` and there are no occupants in the meeting
+-- it will skip calling goLive endpoint
+local function go_live(room)
+    if room._jitsi_go_live_sent then
+        return;
+    end
+
+    if not (room.jitsiMetadata and room.jitsiMetadata.visitors and room.jitsiMetadata.visitors.live) then
+        return;
+    end
+
+    local has_occupant = false;
+    for _, occupant in room:each_occupant() do
+        if not is_admin(occupant.bare_jid) then
+            has_occupant = true;
+            break;
+        end
+    end
+
+    -- when there is an occupant then go live
+    if not has_occupant then
+        return;
+    end
+
+    -- let's inform the queue service
+    local function cb(content_, code_, response_, request_)
+        local room = room;
+        if code_ ~= 200 then
+            module:log('warn', 'External call to visitors_queue_service/golive failed. Code %s, Content %s',
+                code_, content_)
+        end
+    end
+
+    local headers = http_headers or {};
+    headers['Authorization'] = token_util:generateAsapToken();
+
+    local ev = {
+        conference = internal_room_jid_match_rewrite(room.jid)
+    };
+
+    room._jitsi_go_live_sent = true;
+
+    http.request(visitors_queue_service..'/golive', {
+        headers = headers,
+        method = 'POST',
+        body = json.encode(ev);
+    }, cb);
+end
+
 module:hook('iq/host', stanza_handler, 10);
+
+process_host_module(muc_domain_base, function(host_module, host)
+    token_util = module:require "token/util".new(host_module);
+end);
 
 process_host_module(muc_domain_prefix..'.'..muc_domain_base, function(host_module, host)
     -- if visitor mode is started, then you are not allowed to join without request/response exchange of iqs -> deny access
@@ -463,6 +515,29 @@ process_host_module(muc_domain_prefix..'.'..muc_domain_base, function(host_modul
 
         return true; -- halt processing, but return true that we handled it
     end);
+    if visitors_queue_service then
+        host_module:hook('muc-room-created', function (event)
+            local room = event.room;
+
+            if is_healthcheck_room(room.jid) then
+                return;
+            end
+
+            go_live(room);
+        end, -2); -- metadata hook on -1
+        host_module:hook('jitsi-metadata-updated', function (event)
+            if event.key == 'visitors' then
+                go_live(event.room);
+            end
+        end);
+        -- when metadata changed internally from another module
+        host_module:hook('room-metadata-changed', function (event)
+            go_live(event.room);
+        end);
+        host_module:hook('muc-occupant-joined', function (event)
+            go_live(event.room);
+        end);
+    end
 
     if always_visitors_enabled then
         local visitorsEnabledField = {

@@ -54,6 +54,9 @@ export interface IConferenceMetadata {
     recording?: {
         isTranscribingEnabled: boolean;
     };
+    visitors?: {
+        live: boolean;
+    };
     whiteboard?: {
         collabDetails: {
             roomId: string;
@@ -133,6 +136,7 @@ export interface IJitsiConference {
     setAssumedBandwidthBps: (value: number) => void;
     setDesktopSharingFrameRate: Function;
     setDisplayName: Function;
+    setIsSilent: Function;
     setLocalParticipantProperty: Function;
     setMediaEncryptionKey: Function;
     setReceiverConstraints: Function;
