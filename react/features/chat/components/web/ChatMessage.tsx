@@ -19,12 +19,6 @@ interface IProps extends IChatMessageProps {
 
     type: string;
 
-    /**
-     * Function to send a reaction to a message.
-     *
-     * @protected
-     */
-    _onSendReaction: Function;
 }
 
 const useStyles = makeStyles()((theme: Theme) => {
@@ -103,6 +97,14 @@ const useStyles = makeStyles()((theme: Theme) => {
             padding: '2px'
         },
 
+        reactions: {
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '4px',
+            marginTop: '8px',
+            color: theme.palette.text02,
+        },
+
         displayName: {
             ...withPixelLineHeight(theme.typography.labelBold),
             color: theme.palette.text02,
@@ -129,7 +131,8 @@ const useStyles = makeStyles()((theme: Theme) => {
             ...withPixelLineHeight(theme.typography.labelRegular),
             color: theme.palette.text03,
             marginTop: theme.spacing(1)
-        }
+        },
+
     };
 });
 
@@ -146,7 +149,6 @@ const ChatMessage = ({
     kebabMenuVisible,
     knocking,
     message,
-    _onSendReaction,
     showDisplayName,
     showTimestamp,
     type,
@@ -178,6 +180,21 @@ const ChatMessage = ({
         return (
             <div className = { classes.privateMessageNotice }>
                 {getPrivateNoticeMessage(message)}
+            </div>
+        );
+    }
+
+    /**
+     * Renders the message reactions.
+     *
+     * @returns {React$Element<*>}
+     */
+    function _renderReactions() {
+        return (
+            <div className = { classes.reactions }>
+                {message.reactions && message.reactions.map((reaction, index) => (
+                    <span key={index}>{reaction}</span>
+                ))}
             </div>
         );
     }
@@ -235,7 +252,9 @@ const ChatMessage = ({
                             && (
                                 <div
                                 className = { classes.optionsButtonContainer }>
-                                    <ReactButton />
+                                    <ReactButton 
+                                        messageId = { message.id }
+                                        receiverId = { "" }/>
                                 </div>
                             )}
                         </div>
@@ -245,8 +264,10 @@ const ChatMessage = ({
                                 <div
                                     className = { classes.optionsButtonContainer }>
                                     <KebabMenu
+                                        messageId = { message.messageId }
+                                        message = { message.message }
                                         isLobbyMessage = { message.lobbyChat }
-                                        participantID = { message.id } />
+                                        participantId = { message.id } />
                                 </div>
                             )}
                         </div>
@@ -254,6 +275,7 @@ const ChatMessage = ({
                 }
             </div>
             {showTimestamp && _renderTimestamp()}
+            {_renderReactions()}
         </div>
     );
 };
