@@ -1492,6 +1492,12 @@
     },
     "visitors": {
         "chatIndicator": "(visitor)",
+        "joinMeeting": {
+            "description": "You're currently an observer in this conference.",
+            "raiseHand": "Raise your hand",
+            "title": "Joining meeting",
+            "wishToSpeak": "If you wish to speak, please raise your hand below and wait for the moderator's approval."
+        },
         "labelTooltip": "Number of visitors: {{count}}",
         "notification": {
             "demoteDescription": "Sent here by {{actor}}, raise your hand to participate",
