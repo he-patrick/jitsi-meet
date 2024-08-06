@@ -82,13 +82,10 @@ const useStyles = makeStyles()((theme: Theme) => {
             marginLeft: theme.spacing(1)
         },
 
-        reaction: {
-            marginRight: theme.spacing(1)
-        },
-
         reactionBox: {
             display: 'flex',
             alignItems: 'center',
+            gap: theme.spacing(1),
             backgroundColor: theme.palette.grey[800],
             borderRadius: theme.shape.borderRadius,
             padding: theme.spacing(0, 1)
@@ -96,8 +93,6 @@ const useStyles = makeStyles()((theme: Theme) => {
 
         reactionCount: {
             fontSize: '0.8rem'
-
-            // marginLeft: theme.spacing(0.5),
         },
 
         replyButton: {
@@ -218,7 +213,6 @@ const ChatMessage = ({
                     <div className = { classes.reactionBox }>
                         {message.reactions.slice(0, 3).map((reaction, index) => (
                             <span
-                                className = { classes.reaction }
                                 key = { index }>
                                 {reaction}
                             </span>
