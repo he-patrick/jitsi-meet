@@ -50,9 +50,11 @@ ReducerRegistry.register<IChatState>('features/chat', (state = DEFAULT_STATE, ac
         const newMessage: IMessage = {
             displayName: action.displayName,
             error: action.error,
+
             // rename this to sender
             id: action.id,
             isReaction: action.isReaction,
+
             // this needs to be sent by lib-jitsi-meet and received here
             messageId: uuidv4(),
             messageType: action.messageType,
@@ -87,25 +89,27 @@ ReducerRegistry.register<IChatState>('features/chat', (state = DEFAULT_STATE, ac
     case ADD_MESSAGE_REACTION: {
         const { id, messageId, reactionList } = action;
         const messages = state.messages.map(message => {
-            console.log(message)
+            console.log(message);
             if (messageId === message.id) {
-                console.log("FROM: " + id);
-                console.log("MESSAGE_ID: " + messageId);
-                console.log("REACTION: " + reactionList);
+                console.log(`FROM: ${id}`);
+                console.log(`MESSAGE_ID: ${messageId}`);
+                console.log(`REACTION: ${reactionList}`);
+
                 return {
                     ...message,
-                    reactions: [...(message.reactions || []), reactionList]
+                    reactions: [ ...message.reactions || [], reactionList ]
                 };
             }
+
             return message;
         });
-    
+
         return {
             ...state,
             messages
         };
     }
-    
+
 
     case CLEAR_MESSAGES:
         return {
