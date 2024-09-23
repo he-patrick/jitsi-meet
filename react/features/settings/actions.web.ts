@@ -5,6 +5,7 @@ import { setTokenAuthUrlSuccess } from '../authentication/actions.web';
 import { isTokenAuthEnabled } from '../authentication/functions';
 import {
     setFollowMe,
+    setFollowMeRecorder,
     setStartMutedPolicy,
     setStartReactionsMuted
 } from '../base/conference/actions';
@@ -165,6 +166,10 @@ export function submitModeratorTab(newState: any) {
             dispatch(setFollowMe(newState.followMeEnabled));
         }
 
+        if (newState.followMeRecorderEnabled !== currentState.followMeRecorderEnabled) {
+            dispatch(setFollowMeRecorder(newState.followMeRecorderEnabled));
+        }
+
         if (newState.startReactionsMuted !== currentState.startReactionsMuted) {
             batch(() => {
                 // updating settings we want to update and backend (notify the rest of the participants)
@@ -304,6 +309,7 @@ export function submitVirtualBackgroundTab(newState: any, isCancel = false) {
     return async (dispatch: IStore['dispatch'], getState: IStore['getState']) => {
         const state = getState();
         const track = getLocalVideoTrack(state['features/base/tracks'])?.jitsiTrack;
+        const { localFlipX } = state['features/base/settings'];
 
         if (newState.options?.selectedThumbnail) {
             await dispatch(toggleBackgroundEffect(newState.options, track));
@@ -311,7 +317,7 @@ export function submitVirtualBackgroundTab(newState: any, isCancel = false) {
             if (!isCancel) {
                 // Set x scale to default value.
                 dispatch(updateSettings({
-                    localFlipX: true
+                    localFlipX
                 }));
 
                 virtualBackgroundLogger.info(`Virtual background type: '${

@@ -25,7 +25,7 @@ import {
     participantSourcesUpdated,
     participantUpdated
 } from '../participants/actions';
-import { getNormalizedDisplayName } from '../participants/functions';
+import { getNormalizedDisplayName, getParticipantByIdOrUndefined } from '../participants/functions';
 import { IJitsiParticipant } from '../participants/types';
 import { toState } from '../redux/functions';
 import {
@@ -61,6 +61,7 @@ import {
     SEND_TONES,
     SET_ASSUMED_BANDWIDTH_BPS,
     SET_FOLLOW_ME,
+    SET_FOLLOW_ME_RECORDER,
     SET_OBFUSCATED_ROOM,
     SET_PASSWORD,
     SET_PASSWORD_FAILED,
@@ -277,11 +278,18 @@ function _addConferenceListeners(conference: IJitsiConference, dispatch: IStore[
 
     conference.addCommandListener(
         AVATAR_URL_COMMAND,
-        (data: { value: string; }, id: string) => dispatch(participantUpdated({
-            conference,
-            id,
-            avatarURL: data.value
-        })));
+        (data: { value: string; }, id: string) => {
+            const participant = getParticipantByIdOrUndefined(state, id);
+
+            // if already set from presence(jwt), skip the command processing
+            if (!participant?.avatarURL) {
+                return dispatch(participantUpdated({
+                    conference,
+                    id,
+                    avatarURL: data.value
+                }));
+            }
+        });
     conference.addCommandListener(
         EMAIL_COMMAND,
         (data: { value: string; }, id: string) => dispatch(participantUpdated({
@@ -836,6 +844,22 @@ export function sendTones(tones: string, duration: number, pause: number) {
 export function setFollowMe(enabled: boolean) {
     return {
         type: SET_FOLLOW_ME,
+        enabled
+    };
+}
+
+/**
+ * Enables or disables the Follow Me feature used only for the recorder.
+ *
+ * @param {boolean} enabled - Whether Follow Me should be enabled and used only by the recorder.
+ * @returns {{
+ *     type: SET_FOLLOW_ME_RECORDER,
+ *     enabled: boolean
+ * }}
+ */
+export function setFollowMeRecorder(enabled: boolean) {
+    return {
+        type: SET_FOLLOW_ME_RECORDER,
         enabled
     };
 }

@@ -19,6 +19,7 @@ import {
     sendTones,
     setAssumedBandwidthBps,
     setFollowMe,
+    setFollowMeRecorder,
     setLocalSubject,
     setPassword,
     setSubject
@@ -31,6 +32,7 @@ import { isSupportedBrowser } from '../../react/features/base/environment/enviro
 import { parseJWTFromURLParams } from '../../react/features/base/jwt/functions';
 import JitsiMeetJS, { JitsiRecordingConstants } from '../../react/features/base/lib-jitsi-meet';
 import { MEDIA_TYPE, VIDEO_TYPE } from '../../react/features/base/media/constants';
+import { isVideoMutedByUser } from '../../react/features/base/media/functions';
 import {
     grantModerator,
     kickParticipant,
@@ -53,6 +55,10 @@ import { updateSettings } from '../../react/features/base/settings/actions';
 import { getDisplayName } from '../../react/features/base/settings/functions.web';
 import { setCameraFacingMode } from '../../react/features/base/tracks/actions.web';
 import { CAMERA_FACING_MODE_MESSAGE } from '../../react/features/base/tracks/constants';
+import {
+    getLocalVideoTrack,
+    isLocalTrackMuted
+} from '../../react/features/base/tracks/functions';
 import {
     autoAssignToBreakoutRooms,
     closeBreakoutRoom,
@@ -115,6 +121,7 @@ import { isAudioMuteButtonDisabled } from '../../react/features/toolbox/function
 import { setTileView, toggleTileView } from '../../react/features/video-layout/actions.any';
 import { muteAllParticipants } from '../../react/features/video-menu/actions';
 import { setVideoQuality } from '../../react/features/video-quality/actions';
+import { toggleBlurredBackgroundEffect } from '../../react/features/virtual-background/actions';
 import { toggleWhiteboard } from '../../react/features/whiteboard/actions.web';
 import { getJitsiMeetTransport } from '../transport';
 
@@ -322,15 +329,26 @@ function initCommands() {
 
             APP.store.dispatch(setAssumedBandwidthBps(value));
         },
-        'set-follow-me': value => {
+        'set-blurred-background': blurType => {
+            const tracks = APP.store.getState()['features/base/tracks'];
+            const videoTrack = getLocalVideoTrack(tracks)?.jitsiTrack;
+            const muted = tracks ? isLocalTrackMuted(tracks, MEDIA_TYPE.VIDEO) : isVideoMutedByUser(APP.store);
+
+            APP.store.dispatch(toggleBlurredBackgroundEffect(videoTrack, blurType, muted));
+        },
+        'set-follow-me': (value, recorderOnly) => {
 
             if (value) {
-                sendAnalytics(createApiEvent('follow.me.set'));
+                sendAnalytics(createApiEvent('follow.me.set', {
+                    recorderOnly
+                }));
             } else {
-                sendAnalytics(createApiEvent('follow.me.unset'));
+                sendAnalytics(createApiEvent('follow.me.unset', {
+                    recorderOnly
+                }));
             }
 
-            APP.store.dispatch(setFollowMe(value));
+            APP.store.dispatch(recorderOnly ? setFollowMeRecorder(value) : setFollowMe(value));
         },
         'set-large-video-participant': (participantId, videoType) => {
             const { getState, dispatch } = APP.store;
@@ -489,7 +507,9 @@ function initCommands() {
             sendAnalytics(createApiEvent('email.changed'));
             APP.conference.changeLocalEmail(email);
         },
-        'avatar-url': avatarUrl => {
+        'avatar-url': avatarUrl => { // @deprecated
+            console.warn('Using command avatarUrl is deprecated. Use context.user.avatar in the jwt.');
+
             sendAnalytics(createApiEvent('avatar.url.changed'));
             APP.conference.changeLocalAvatarUrl(avatarUrl);
         },

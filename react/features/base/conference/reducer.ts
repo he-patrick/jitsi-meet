@@ -26,6 +26,7 @@ import {
     P2P_STATUS_CHANGED,
     SET_ASSUMED_BANDWIDTH_BPS,
     SET_FOLLOW_ME,
+    SET_FOLLOW_ME_RECORDER,
     SET_OBFUSCATED_ROOM,
     SET_PASSWORD,
     SET_PENDING_SUBJECT_CHANGE,
@@ -93,6 +94,7 @@ export interface IJitsiConference {
     getRole: Function;
     getSpeakerStats: () => ISpeakerStats;
     getSsrcByTrack: Function;
+    getTranscriptionStatus: Function;
     grantOwner: Function;
     isAVModerationSupported: Function;
     isE2EEEnabled: Function;
@@ -160,6 +162,7 @@ export interface IConferenceState {
     e2eeSupported?: boolean;
     error?: Error;
     followMeEnabled?: boolean;
+    followMeRecorderEnabled?: boolean;
     joining?: IJitsiConference;
     leaving?: IJitsiConference;
     lobbyWaitingForHost?: boolean;
@@ -251,6 +254,12 @@ ReducerRegistry.register<IConferenceState>('features/base/conference',
         }
         case SET_FOLLOW_ME:
             return set(state, 'followMeEnabled', action.enabled);
+
+        case SET_FOLLOW_ME_RECORDER:
+            return { ...state,
+                followMeRecorderEnabled: action.enabled,
+                followMeEnabled: action.enabled
+            };
 
         case SET_START_REACTIONS_MUTED:
             return set(state, 'startReactionsMuted', action.muted);
